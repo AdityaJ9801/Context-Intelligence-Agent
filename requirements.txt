@@ -1,0 +1,17 @@
+fastapi
+uvicorn[standard]
+pandas
+polars
+pyarrow
+sqlalchemy
+boto3
+google-cloud-storage
+paramiko
+kafka-python
+redis
+ydata-profiling
+great-expectations
+duckdb
+httpx
+pydantic-settings
+python-dotenv
