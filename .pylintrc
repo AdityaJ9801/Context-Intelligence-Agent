@@ -1,0 +1,18 @@
+[MASTER]
+# Ignore third-party import errors — packages are installed in Docker/venv,
+# not necessarily in the CI lint environment.
+ignored-modules=fastapi,fastapi.responses,pydantic,pydantic_settings,redis,boto3,
+    pyarrow,pyarrow.parquet,sqlalchemy,httpx,pandas,numpy,kafka,paramiko,
+    google.cloud,ydata_profiling,great_expectations,duckdb,polars
+
+[MESSAGES CONTROL]
+# E0401 — import-error: suppressed because third-party packages are not
+#          installed in the pylint environment (they are in Docker).
+# R0801 — duplicate-code: connectors share intentional structural patterns.
+disable=E0401,R0801,R0903
+
+[FORMAT]
+max-line-length=100
+
+[DESIGN]
+max-returns=7
