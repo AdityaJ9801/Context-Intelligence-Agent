@@ -69,7 +69,8 @@ class TestCardinality:
         assert p.cardinality == "low"
 
     def test_high_cardinality(self):
-        df = pd.DataFrame({"col": list(range(200))})
+        # Repeated values ensure unique_count < non_null_count (not "unique")
+        df = pd.DataFrame({"col": list(range(150)) * 2})
         p = _profile(df)[0]
         assert p.cardinality == "high"
 
@@ -79,7 +80,8 @@ class TestCardinality:
         assert p.cardinality == "unique"
 
     def test_medium_cardinality(self):
-        df = pd.DataFrame({"col": list(range(50))})
+        # 50 distinct values repeated → unique_count(50) < non_null_count(100)
+        df = pd.DataFrame({"col": list(range(50)) * 2})
         p = _profile(df)[0]
         assert p.cardinality == "medium"
 
@@ -127,11 +129,14 @@ class TestCategoricalStats:
 
 class TestPatternDetection:
     def test_email_pattern_detected(self):
+        # Column named "email" → PII redaction fires, but pattern is still detected
         emails = [f"user{i}@example.com" for i in range(20)]
         df = pd.DataFrame({"email": emails})
         p = _profile(df)[0]
         assert p.has_pattern is True
         assert p.detected_pattern == "email"
+        # sample_values must be redacted (name + pattern both flag PII)
+        assert p.sample_values == ["[REDACTED_FOR_SECURITY]"]
 
     def test_uuid_pattern_detected(self):
         import uuid
@@ -179,3 +184,61 @@ class TestDatetimeColumns:
         assert p.date_range is not None
         assert "min" in p.date_range
         assert "max" in p.date_range
+
+
+# ── PII redaction ─────────────────────────────────────────────────────────────
+
+class TestPIIRedaction:
+    _SENTINEL = ["[REDACTED_FOR_SECURITY]"]
+
+    def test_email_column_name_redacted(self):
+        df = pd.DataFrame({"email_address": [f"u{i}@x.com" for i in range(10)]})
+        p = _profile(df)[0]
+        assert p.sample_values == self._SENTINEL
+
+    def test_phone_column_name_redacted(self):
+        df = pd.DataFrame({"phone_number": ["555-1234"] * 10})
+        p = _profile(df)[0]
+        assert p.sample_values == self._SENTINEL
+
+    def test_password_column_redacted(self):
+        df = pd.DataFrame({"password": ["secret123"] * 10})
+        p = _profile(df)[0]
+        assert p.sample_values == self._SENTINEL
+
+    def test_ssn_column_redacted(self):
+        df = pd.DataFrame({"ssn": ["123-45-6789"] * 10})
+        p = _profile(df)[0]
+        assert p.sample_values == self._SENTINEL
+
+    def test_credit_column_redacted(self):
+        df = pd.DataFrame({"credit_card": ["4111111111111111"] * 10})
+        p = _profile(df)[0]
+        assert p.sample_values == self._SENTINEL
+
+    def test_email_pattern_triggers_redaction(self):
+        # Column named "contact" but values are all emails → pattern-based redaction
+        emails = [f"user{i}@example.com" for i in range(20)]
+        df = pd.DataFrame({"contact": emails})
+        p = _profile(df)[0]
+        assert p.sample_values == self._SENTINEL
+
+    def test_phone_pattern_triggers_redaction(self):
+        phones = ["555-867-5309"] * 20
+        df = pd.DataFrame({"contact_number": phones})
+        p = _profile(df)[0]
+        assert p.sample_values == self._SENTINEL
+
+    def test_safe_column_not_redacted(self):
+        df = pd.DataFrame({"product_id": list(range(10))})
+        p = _profile(df)[0]
+        assert p.sample_values != self._SENTINEL
+        assert len(p.sample_values) > 0
+
+    def test_uuid_column_not_redacted_by_pattern(self):
+        import uuid as _uuid
+        # UUIDs are not PII patterns — only email/phone trigger pattern redaction
+        uuids = [str(_uuid.uuid4()) for _ in range(20)]
+        df = pd.DataFrame({"record_id": uuids})
+        p = _profile(df)[0]
+        assert p.sample_values != self._SENTINEL
