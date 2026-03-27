@@ -9,7 +9,15 @@ ignored-modules=fastapi,fastapi.responses,pydantic,pydantic_settings,redis,boto3
 # E0401 — import-error: suppressed because third-party packages are not
 #          installed in the pylint environment (they are in Docker).
 # R0801 — duplicate-code: connectors share intentional structural patterns.
-disable=E0401,R0801,R0903
+# R0903 — too-few-public-methods: expected for Pydantic models and ABC stubs.
+# C0114 — missing-module-docstring: not required for test modules.
+# C0115 — missing-class-docstring: not required for test classes.
+# C0116 — missing-function-docstring: not required for test methods.
+# C0415 — import-outside-toplevel: common pattern in pytest fixtures/tests.
+# C0301 — line-too-long: relaxed for test files with long mock patch paths.
+# W0621 — redefined-outer-name: standard pytest fixture injection pattern.
+# W0611 — unused-import: numpy imported for type checks in some test helpers.
+disable=E0401,R0801,R0903,C0114,C0115,C0116,C0415,C0301,W0621,W0611
 
 [FORMAT]
 max-line-length=100
