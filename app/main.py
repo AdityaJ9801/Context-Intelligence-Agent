@@ -28,7 +28,23 @@ app.include_router(context.router)
 @app.get("/health", tags=["ops"], summary="Health check")
 async def health() -> dict:
     """Return service liveness status."""
-    return {"status": "healthy"}
+    from app.config import settings
+    provider = str(getattr(settings, "llm_provider", "unknown"))
+    model = ""
+    if provider == "azure_openai":
+        model = getattr(settings, "azure_openai_deployment_name", "")
+    elif provider == "groq":
+        model = getattr(settings, "groq_model", "")
+    elif provider == "openai":
+        model = "gpt-4o"
+    elif provider == "ollama":
+        model = getattr(settings, "ollama_model", "")
+
+    return {
+        "status": "healthy",
+        "llm_provider": provider,
+        "llm_model": model,
+    }
 
 
 @app.middleware("http")

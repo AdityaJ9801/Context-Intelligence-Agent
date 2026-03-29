@@ -64,6 +64,7 @@ async def run_pipeline(
         columns=columns,
         metadata={
             "suggested_analyses": llm_result.get("suggested_analyses", []),
+            "source": source.model_dump(),  # Include original source for downstream agents
         },
     )
 

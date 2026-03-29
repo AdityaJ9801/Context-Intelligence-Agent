@@ -5,11 +5,13 @@ services:
     build: .
     container_name: cia_api
     ports:
-      - "8000:8000"
+      - "8001:8001"
     env_file:
-      - .env.free          # swap to .env.paid for production
+      - .env         # swap to .env.paid for production
     environment:
-      GROQ_API_KEY: ${GROQ_API_KEY}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
+      REDIS_URL: redis://redis:6379/0
+      OLLAMA_BASE_URL: http://host.docker.internal:11434
     volumes:
       - .:/app             # live-reload friendly for local dev
       - cia_data:/app/data

@@ -31,7 +31,7 @@ class TestHealth:
     @pytest.mark.asyncio
     async def test_health_body(self, client: AsyncClient):
         resp = await client.get("/health")
-        assert resp.json() == {"status": "healthy"}
+        assert resp.json()["status"] == "healthy"
 
 
 # ── POST /profile ─────────────────────────────────────────────────────────────

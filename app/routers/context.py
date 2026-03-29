@@ -62,3 +62,62 @@ async def refresh_context(
     if context is None:
         raise HTTPException(status_code=500, detail="Pipeline completed without a result.")
     return context
+
+
+@router.post(
+    "/run",
+    response_model=ContextObject,
+    summary="Orchestrator-compatible endpoint for retrieving or profiling context",
+)
+async def run_task(
+    payload: dict,
+    cache: Annotated[ContextCache, Depends(get_cache)],
+) -> ContextObject:
+    """
+    Orchestrator-compatible endpoint that receives task payloads.
+    
+    Expected payload structure from orchestrator:
+    {
+        "query": "...",
+        "context_id": "...",  # Optional: if provided, retrieve from cache
+        "source": { ... DataSource object ... },  # Optional: if provided, profile it
+        "_context": { ... upstream dependencies ... }
+    }
+    
+    If context_id is provided, retrieves cached context.
+    If source is provided, profiles the source.
+    Otherwise returns an error.
+    """
+    try:
+        # Check if we should retrieve cached context
+        context_id = payload.get("context_id")
+        if context_id:
+            context = await cache.get_context(context_id)
+            if context:
+                return context
+            # If not in cache, fall through to try profiling
+        
+        # Check if we should profile a new source
+        source_data = payload.get("source")
+        if source_data:
+            source = DataSource(**source_data)
+            
+            # Run the pipeline
+            context: ContextObject | None = None
+            async for _stage, _pct, result in run_pipeline(source, cache):
+                if result is not None:
+                    context = result  # type: ignore[assignment]
+            
+            if context is None:
+                raise HTTPException(status_code=500, detail="Pipeline completed without a result.")
+            
+            return context
+        
+        # Neither context_id nor source provided
+        raise HTTPException(
+            status_code=400, 
+            detail="Either context_id (to retrieve cached context) or source (to profile) is required"
+        )
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Context error: {str(e)}")
