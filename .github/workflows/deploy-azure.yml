@@ -42,10 +42,23 @@ jobs:
         run: |
           IMAGE="${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ env.AGENT_NAME }}:${{ github.sha }}"
 
+          # Check if container app already exists
           EXISTS=$(az containerapp show \
             --name ${{ env.AGENT_NAME }} \
             --resource-group ${{ env.RESOURCE_GROUP }} \
             --query "name" -o tsv 2>/dev/null || echo "")
+
+          # Build Environment Variables and Secrets strings
+          # Start with required ones
+          ENV_VARS="LLM_PROVIDER=openai PORT=${{ env.TARGET_PORT }} OPENAI_API_KEY=secretref:openai-api-key"
+          SECRETS="openai-api-key=${{ secrets.OPENAI_API_KEY }}"
+
+          # Add Optional Azure Storage if secret exists
+          if [ ! -z "${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}" ]; then
+            echo "📦 Adding Azure Storage configuration..."
+            ENV_VARS="$ENV_VARS AZURE_STORAGE_CONNECTION_STRING=secretref:azure-storage-conn"
+            SECRETS="$SECRETS azure-storage-conn=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}"
+          fi
 
           if [ -z "$EXISTS" ]; then
             echo "🆕 Creating new Container App: ${{ env.AGENT_NAME }}"
@@ -63,20 +76,21 @@ jobs:
               --registry-server ${{ secrets.REGISTRY_LOGIN_SERVER }} \
               --registry-username ${{ secrets.REGISTRY_USERNAME }} \
               --registry-password ${{ secrets.REGISTRY_PASSWORD }} \
-              --env-vars \
-                "LLM_PROVIDER=openai" \
-                "OPENAI_API_KEY=secretref:openai-api-key" \
-                "PORT=${{ env.TARGET_PORT }}" \
-                "AZURE_STORAGE_CONNECTION_STRING=secretref:azure-storage-conn" \
-              --secrets \
-                "openai-api-key=${{ secrets.OPENAI_API_KEY }}" \
-                "azure-storage-conn=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}"
+              --env-vars $ENV_VARS \
+              --secrets $SECRETS
           else
             echo "🔄 Updating existing Container App: ${{ env.AGENT_NAME }}"
+            # We update secrets first in case they were modified
+            az containerapp secret set \
+              --name ${{ env.AGENT_NAME }} \
+              --resource-group ${{ env.RESOURCE_GROUP }} \
+              --secrets $SECRETS
+
             az containerapp update \
               --name ${{ env.AGENT_NAME }} \
               --resource-group ${{ env.RESOURCE_GROUP }} \
-              --image $IMAGE
+              --image $IMAGE \
+              --set-env-vars $ENV_VARS
           fi
 
       - name: Show Deployment Status
