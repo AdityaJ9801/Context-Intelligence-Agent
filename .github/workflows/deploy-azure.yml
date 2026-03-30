@@ -10,8 +10,7 @@ env:
   TARGET_PORT: "8001"
   RESOURCE_GROUP: rg-axiom-ai
   CONTAINER_ENV: axiom-ai-env
-  # Dockerfile is inside the inner directory
-  BUILD_PATH: ./Context-Intelligence-Agent
+
 
 jobs:
   build-and-deploy:
