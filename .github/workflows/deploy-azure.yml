@@ -11,6 +11,7 @@ env:
   RESOURCE_GROUP: rg-axiom-ai
   CONTAINER_ENV: axiom-ai-env
   # Dockerfile is inside the inner directory
+  DOCKER_CONTEXT: ./Context-Intelligence-Agent
 
 jobs:
   build-and-deploy:
