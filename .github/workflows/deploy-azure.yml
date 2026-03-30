@@ -11,7 +11,6 @@ env:
   RESOURCE_GROUP: rg-axiom-ai
   CONTAINER_ENV: axiom-ai-env
 
-
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
@@ -32,15 +31,13 @@ jobs:
           password: ${{ secrets.REGISTRY_PASSWORD }}
 
       - name: Build and Push Docker Image
-        run: |
-          IMAGE="${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ env.AGENT_NAME }}:${{ github.sha }}"
-          IMAGE_LATEST="${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ env.AGENT_NAME }}:latest"
-      
-          docker buildx build \
-            --push \
-            -t $IMAGE \
-            -t $IMAGE_LATEST 
-
+        uses: docker/build-push-action@v5
+        with:
+          context: ./Context-Intelligence-Agent
+          push: true
+          tags: |
+            ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ env.AGENT_NAME }}:${{ github.sha }}
+            ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ env.AGENT_NAME }}:latest
 
       - name: Deploy to Azure Container Apps
         run: |
